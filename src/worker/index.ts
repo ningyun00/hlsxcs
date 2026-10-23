@@ -42,7 +42,7 @@ app.use("/api/records", async (c, next) => {
 app.use("/api/records/*", async (c, next) => {
   const expected = c.env.CRUD_API_TOKEN;
   if (!expected) return c.json({ ok: false, message: "CRUD_API_TOKEN secret is not configured." }, 503);
-  const supplied = c.req.header("Authorization")?.replace(/^Bearer\\s+/i, "");
+  const supplied = c.req.header("Authorization")?.replace(/^Bearer\s+/i, "");
   if (!supplied || supplied !== expected) return c.json({ ok: false, message: "未授权：请填写正确的 API 访问令牌。" }, 401);
   await next();
 });
