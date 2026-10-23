@@ -22,26 +22,22 @@ type RecordRow = {
 
 const app = new Hono<{ Bindings: Env }>();
 
-function getPool(env: Env) {
+async function getConnection(env: Env) {
   const db = env.HYPERDRIVE;
   if (!db?.host || !db.user || !db.password || !db.database || !db.port) {
     throw new Error("Hyperdrive binding HYPERDRIVE is missing host/user/password/database/port.");
   }
-  return mysql.createPool({
+  return mysql.createConnection({
     host: db.host,
     user: db.user,
     password: db.password,
     database: db.database,
     port: Number(db.port),
     disableEval: true,
-    waitForConnections: true,
-    connectionLimit: 5,
-    maxIdle: 2,
-    idleTimeout: 60000,
   });
 }
 
-async function ensureSchema(pool: ReturnType<typeof getPool>) {
+async function ensureSchema(pool: Awaited<ReturnType<typeof getConnection>>) {
   await pool.query("CREATE DATABASE IF NOT EXISTS hlsxcs_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
   await pool.query(`CREATE TABLE IF NOT EXISTS hlsxcs_test.test_records (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -79,7 +75,7 @@ app.use("/api/records/*", async (c, next) => {
 app.get("/api/health", async (c) => {
   let pool: ReturnType<typeof getPool> | undefined;
   try {
-    pool = getPool(c.env);
+    pool = await getConnection(c.env);
     await ensureSchema(pool);
     await pool.query("SELECT 1 AS ok");
     return c.json({ ok: true, message: "MySQL 连接成功" });
