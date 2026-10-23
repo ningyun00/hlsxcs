@@ -29,10 +29,10 @@ label{display:block;font-size:13px;font-weight:650;color:#334155;margin-bottom:8
 @media(max-width:760px){.shell{padding:18px 12px 32px}.header{align-items:flex-start}.header h1{font-size:20px}.status{font-size:11px;padding:8px}.stats{gap:8px}.stat{padding:13px 12px;border-radius:13px}.stat-value{font-size:19px}.stat-label{font-size:11px}.layout{grid-template-columns:1fr}.panel-body{padding:16px}.toolbar{padding:12px}.records{padding:5px 12px 12px}.record-actions{flex-direction:column}.btn{padding:10px 12px}}
 `;
 
-async function request(path: string, init?: RequestInit): Promise<ApiResult> {
+async function request(path: string, init?: RequestInit, token = ""): Promise<ApiResult> {
   const response = await fetch(path, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(init?.headers ?? {}) },
   });
   const data = await response.json() as ApiResult;
   if (!response.ok || !data.ok) throw new Error(data.message || `请求失败（${response.status}）`);
@@ -40,7 +40,7 @@ async function request(path: string, init?: RequestInit): Promise<ApiResult> {
 }
 
 function App() {
-  const [records, setRecords] = useState<RecordItem[]>([]);
+  const [records, setRecords] = useState<RecordItem[]>([]);\n  const [token, setToken] = useState(() => window.sessionStorage.getItem("hlsxcs-crud-token") ?? "");
   const [search, setSearch] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -53,7 +53,7 @@ function App() {
 
   const load = useCallback(async (query = search) => {
     try {
-      const data = await request(`/api/records?q=${encodeURIComponent(query)}&limit=200`);
+      const data = await request(`/api/records?q=${encodeURIComponent(query)}&limit=200`, undefined, token);
       setRecords(data.records ?? []);
       setError("");
     } catch (e) {
@@ -88,7 +88,7 @@ function App() {
     setBusy(true); setError(""); setMessage("");
     try {
       const path = editingId === null ? "/api/records" : `/api/records/${editingId}`;
-      await request(path, { method: editingId === null ? "POST" : "PUT", body: JSON.stringify({ title, content }) });
+      await request(path, { method: editingId === null ? "POST" : "PUT", body: JSON.stringify({ title, content }) }, token);
       setMessage(editingId === null ? "新增成功，数据已写入 MySQL。" : "修改成功，数据已更新。");
       resetForm();
       await load(search);
@@ -108,7 +108,7 @@ function App() {
     if (!window.confirm(`确定删除记录 #${item.id}「${item.title}」吗？此操作无法撤销。`)) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      await request(`/api/records/${item.id}`, { method: "DELETE" });
+      await request(`/api/records/${item.id}`, { method: "DELETE" }, token);
       setMessage(`记录 #${item.id} 已删除。`);
       if (editingId === item.id) resetForm();
       await load(search);
@@ -134,7 +134,7 @@ function App() {
       <section className="layout">
         <div className="panel">
           <div className="panel-head"><h2>{editingId === null ? "新增测试记录" : `编辑记录 #${editingId}`}</h2><p>填写标题与内容，提交后将直接写入 MySQL。</p></div>
-          <form className="panel-body" onSubmit={save}>
+          <form className="panel-body" onSubmit={save}>\n            <div className="group"><label htmlFor="api-token">API 访问令牌</label><input id="api-token" className="field" type="password" autoComplete="off" value={token} onChange={e=>{setToken(e.target.value);window.sessionStorage.setItem("hlsxcs-crud-token",e.target.value);}} placeholder="填写 Cloudflare CRUD_API_TOKEN" /><div className="sub" style={{marginTop:7}}>令牌只保存在当前浏览器会话中；刷新页面仍可使用，关闭标签页后清除。</div></div>
             <div className="group"><label htmlFor="title">标题 <span style={{color:"#dc2626"}}>*</span></label><input id="title" className="field" value={title} onChange={e=>setTitle(e.target.value)} maxLength={200} placeholder="例如：测试第一条记录" required /></div>
             <div className="group"><label htmlFor="content">内容</label><textarea id="content" className="field" value={content} onChange={e=>setContent(e.target.value)} maxLength={20000} placeholder="输入测试数据、备注或 JSON 文本…" /></div>
             <div className="actions"><button className="btn primary" type="submit" disabled={busy}>{busy ? "处理中…" : editingId === null ? "＋ 新增记录" : "保存修改"}</button>{editingId !== null && <button className="btn secondary" type="button" onClick={resetForm}>取消编辑</button>}<button className="btn secondary" type="button" onClick={()=>{void checkDb();void load(search)}} disabled={busy}>刷新数据</button></div>
