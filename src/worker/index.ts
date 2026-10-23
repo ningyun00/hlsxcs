@@ -12,6 +12,12 @@ interface Env {
   CRUD_API_TOKEN?: string;
 }
 
+type DbConnection = {
+  query: (...args: any[]) => Promise<any>;
+  execute: (...args: any[]) => Promise<any>;
+  end: () => Promise<void>;
+};
+
 type RecordRow = {
   id: number;
   title: string;
@@ -22,22 +28,22 @@ type RecordRow = {
 
 const app = new Hono<{ Bindings: Env }>();
 
-async function getConnection(env: Env) {
+async function getConnection(env: Env): Promise<DbConnection> {
   const db = env.HYPERDRIVE;
   if (!db?.host || !db.user || !db.password || !db.database || !db.port) {
     throw new Error("Hyperdrive binding HYPERDRIVE is missing host/user/password/database/port.");
   }
-  return createConnection({
+  return await createConnection({
     host: db.host,
     user: db.user,
     password: db.password,
     database: db.database,
     port: Number(db.port),
     disableEval: true,
-  });
+  }) as unknown as DbConnection;
 }
 
-async function ensureSchema(pool: Awaited<ReturnType<typeof getConnection>>) {
+async function ensureSchema(pool: DbConnection) {
   await pool.query("CREATE DATABASE IF NOT EXISTS hlsxcs_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
   await pool.query(`CREATE TABLE IF NOT EXISTS hlsxcs_test.test_records (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -73,7 +79,7 @@ app.use("/api/records/*", async (c, next) => {
 });
 
 app.get("/api/health", async (c) => {
-  let pool: Awaited<ReturnType<typeof getConnection>> | undefined;
+  let pool: DbConnection | undefined;
   try {
     pool = await getConnection(c.env);
     await ensureSchema(pool);
@@ -90,7 +96,7 @@ app.get("/api/health", async (c) => {
 });
 
 app.get("/api/records", async (c) => {
-  let pool: Awaited<ReturnType<typeof getConnection>> | undefined;
+  let pool: DbConnection | undefined;
   try {
     pool = await getConnection(c.env);
     await ensureSchema(pool);
@@ -120,7 +126,7 @@ app.get("/api/records", async (c) => {
 app.get("/api/records/:id", async (c) => {
   const id = Number(c.req.param("id"));
   if (!Number.isSafeInteger(id) || id < 1) return c.json({ ok: false, message: "无效的记录 ID" }, 400);
-  let pool: Awaited<ReturnType<typeof getConnection>> | undefined;
+  let pool: DbConnection | undefined;
   try {
     pool = await getConnection(c.env);
     await ensureSchema(pool);
@@ -151,7 +157,7 @@ app.post("/api/records", async (c) => {
   if (title.length > 200) return c.json({ ok: false, message: "标题不能超过 200 个字符" }, 400);
   if (content.length > 20000) return c.json({ ok: false, message: "内容不能超过 20000 个字符" }, 400);
 
-  let pool: Awaited<ReturnType<typeof getConnection>> | undefined;
+  let pool: DbConnection | undefined;
   try {
     pool = await getConnection(c.env);
     await ensureSchema(pool);
@@ -187,7 +193,7 @@ app.put("/api/records/:id", async (c) => {
   if (title.length > 200) return c.json({ ok: false, message: "标题不能超过 200 个字符" }, 400);
   if (content.length > 20000) return c.json({ ok: false, message: "内容不能超过 20000 个字符" }, 400);
 
-  let pool: Awaited<ReturnType<typeof getConnection>> | undefined;
+  let pool: DbConnection | undefined;
   try {
     pool = await getConnection(c.env);
     await ensureSchema(pool);
@@ -214,7 +220,7 @@ app.put("/api/records/:id", async (c) => {
 app.delete("/api/records/:id", async (c) => {
   const id = Number(c.req.param("id"));
   if (!Number.isSafeInteger(id) || id < 1) return c.json({ ok: false, message: "无效的记录 ID" }, 400);
-  let pool: Awaited<ReturnType<typeof getConnection>> | undefined;
+  let pool: DbConnection | undefined;
   try {
     pool = await getConnection(c.env);
     await ensureSchema(pool);
