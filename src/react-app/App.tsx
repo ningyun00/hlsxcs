@@ -124,7 +124,7 @@ function App() {
     <style>{styles}</style>
     <main className="shell">
       <header className="header">
-        <div className="brand"><div className="logo">DB</div><div><h1>MySQL 数据管理台</h1><div className="sub">Cloudflare Workers + Hyperdrive · 测试数据库 CRUD</div></div></div>
+        <div className="brand"><div className="logo">DB</div><div><h1>业务数据管理</h1><div className="sub">数据管理 · 新增、查询、编辑与删除</div></div></div>
         <div className="status"><span className={`dot ${dbStatus === "ok" ? "ok" : dbStatus === "bad" ? "bad" : ""}`}/>{dbLabel}</div>
       </header>
       <section className="stats">
@@ -134,29 +134,29 @@ function App() {
       </section>
       <section className="layout">
         <div className="panel">
-          <div className="panel-head"><h2>{editingId === null ? "新增测试记录" : `编辑记录 #${editingId}`}</h2><p>填写标题与内容，提交后将直接写入 MySQL。</p></div>
+          <div className="panel-head"><h2>{editingId === null ? "新增记录" : `编辑记录 #${editingId}`}</h2><p>填写标题与内容，保存后将写入数据库。</p></div>
           <form className="panel-body" onSubmit={save}>
             <div className="group"><label htmlFor="api-token">API 访问令牌</label><input id="api-token" className="field" type="password" autoComplete="off" value={token} onChange={e=>{setToken(e.target.value);window.sessionStorage.setItem("hlsxcs-crud-token",e.target.value);}} placeholder="填写 Cloudflare CRUD_API_TOKEN" /><div className="sub" style={{marginTop:7}}>令牌只保存在当前浏览器会话中；刷新页面仍可使用，关闭标签页后清除。</div></div>
-            <div className="group"><label htmlFor="title">标题 <span style={{color:"#dc2626"}}>*</span></label><input id="title" className="field" value={title} onChange={e=>setTitle(e.target.value)} maxLength={200} placeholder="例如：测试第一条记录" required /></div>
-            <div className="group"><label htmlFor="content">内容</label><textarea id="content" className="field" value={content} onChange={e=>setContent(e.target.value)} maxLength={20000} placeholder="输入测试数据、备注或 JSON 文本…" /></div>
+            <div className="group"><label htmlFor="title">标题 <span style={{color:"#dc2626"}}>*</span></label><input id="title" className="field" value={title} onChange={e=>setTitle(e.target.value)} maxLength={200} placeholder="请输入标题" required /></div>
+            <div className="group"><label htmlFor="content">内容</label><textarea id="content" className="field" value={content} onChange={e=>setContent(e.target.value)} maxLength={20000} placeholder="请输入内容或备注…" /></div>
             <div className="actions"><button className="btn primary" type="submit" disabled={busy}>{busy ? "处理中…" : editingId === null ? "＋ 新增记录" : "保存修改"}</button>{editingId !== null && <button className="btn secondary" type="button" onClick={resetForm}>取消编辑</button>}<button className="btn secondary" type="button" onClick={()=>{void checkDb();void load(search)}} disabled={busy}>刷新数据</button></div>
             {message && <div className="notice">{message}</div>}
             {error && <div className="notice error">{error}</div>}
-            {dbStatus === "bad" && !error && <div className="notice info">数据库尚未连通。请先在 Cloudflare 配置 Hyperdrive，并创建测试表。</div>}
+            {dbStatus === "bad" && !error && <div className="notice info">数据库暂时无法访问，请检查数据库连接配置。</div>}
           </form>
         </div>
         <div className="panel">
-          <div className="panel-head"><h2>数据记录</h2><p>查询、编辑、删除数据库中的测试数据。</p></div>
+          <div className="panel-head"><h2>数据记录</h2><p>查询、编辑或删除已有记录。</p></div>
           <div className="toolbar"><input className="field search" aria-label="搜索记录" placeholder="搜索标题或内容…" value={search} onChange={e=>setSearch(e.target.value)}/><span className="count">{records.length} 条</span></div>
           <div className="records">
-            {records.length === 0 ? <div className="empty"><strong>{error ? "暂时无法加载数据" : "还没有记录"}</strong>{error ? "请检查数据库连接与测试表配置。" : "在左侧新增一条记录，验证新增和查询功能。"}</div> : records.map(item=><article className="record" key={item.id}>
+            {records.length === 0 ? <div className="empty"><strong>{error ? "暂时无法加载数据" : "还没有记录"}</strong>{error ? "请检查数据库连接配置。" : "点击左侧新增记录，开始管理数据。"}</div> : records.map(item=><article className="record" key={item.id}>
               <div className="record-main"><div className="record-title">#{item.id} · {item.title}</div><div className="record-content">{item.content || "（无内容）"}</div><div className="record-meta">创建：{new Date(item.created_at).toLocaleString()} · 更新：{new Date(item.updated_at).toLocaleString()}</div></div>
               <div className="record-actions"><button className="btn secondary mini" onClick={()=>edit(item)} disabled={busy}>编辑</button><button className="btn danger mini" onClick={()=>void remove(item)} disabled={busy}>删除</button></div>
             </article>)}
           </div>
         </div>
       </section>
-      <div className="footer">测试用途 · 请勿在此页面录入敏感信息 · 删除操作会直接影响测试数据库</div>
+      <div className="footer">数据管理 · 删除操作不可撤销</div>
     </main>
   </>;
 }
