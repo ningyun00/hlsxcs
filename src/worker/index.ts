@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import mysql from "mysql2/promise";
+import { createConnection } from "mysql2/promise";
 
 interface Env {
   HYPERDRIVE: {
@@ -27,7 +27,7 @@ async function getConnection(env: Env) {
   if (!db?.host || !db.user || !db.password || !db.database || !db.port) {
     throw new Error("Hyperdrive binding HYPERDRIVE is missing host/user/password/database/port.");
   }
-  return mysql.createConnection({
+  return createConnection({
     host: db.host,
     user: db.user,
     password: db.password,
