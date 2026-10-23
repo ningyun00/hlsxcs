@@ -36,4 +36,4 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
       - name: Build application
-        run: npm run build
+        run: npm run check
