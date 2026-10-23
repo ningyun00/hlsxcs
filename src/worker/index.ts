@@ -103,11 +103,11 @@ app.get("/api/records", async (c) => {
     const q = (c.req.query("q") ?? "").trim().slice(0, 100);
     const limit = Math.min(Math.max(Number(c.req.query("limit") ?? 100) || 100, 1), 200);
     const [rows] = q
-      ? await pool.execute(
+      ? await pool.query(
           "SELECT id, title, content, created_at, updated_at FROM hlsxcs_test.test_records WHERE title LIKE ? OR content LIKE ? ORDER BY id DESC LIMIT ?",
           [`%${q}%`, `%${q}%`, limit],
         )
-      : await pool.execute(
+      : await pool.query(
           "SELECT id, title, content, created_at, updated_at FROM hlsxcs_test.test_records ORDER BY id DESC LIMIT ?",
           [limit],
         );
@@ -130,7 +130,7 @@ app.get("/api/records/:id", async (c) => {
   try {
     pool = await getConnection(c.env);
     await ensureSchema(pool);
-    const [rows] = await pool.execute(
+    const [rows] = await pool.query(
       "SELECT id, title, content, created_at, updated_at FROM hlsxcs_test.test_records WHERE id = ? LIMIT 1",
       [id],
     );
@@ -161,12 +161,12 @@ app.post("/api/records", async (c) => {
   try {
     pool = await getConnection(c.env);
     await ensureSchema(pool);
-    const [result] = await pool.execute(
+    const [result] = await pool.query(
       "INSERT INTO hlsxcs_test.test_records (title, content) VALUES (?, ?)",
       [title, content],
     );
     const insertId = (result as { insertId: number }).insertId;
-    const [rows] = await pool.execute(
+    const [rows] = await pool.query(
       "SELECT id, title, content, created_at, updated_at FROM hlsxcs_test.test_records WHERE id = ?",
       [insertId],
     );
@@ -197,15 +197,15 @@ app.put("/api/records/:id", async (c) => {
   try {
     pool = await getConnection(c.env);
     await ensureSchema(pool);
-    const [result] = await pool.execute(
+    const [result] = await pool.query(
       "UPDATE hlsxcs_test.test_records SET title = ?, content = ? WHERE id = ?",
       [title, content, id],
     );
     if ((result as { affectedRows: number }).affectedRows === 0) {
-      const [rows] = await pool.execute("SELECT id FROM hlsxcs_test.test_records WHERE id = ?", [id]);
+      const [rows] = await pool.query("SELECT id FROM hlsxcs_test.test_records WHERE id = ?", [id]);
       if ((rows as unknown[]).length === 0) return c.json({ ok: false, message: "记录不存在" }, 404);
     }
-    const [rows] = await pool.execute(
+    const [rows] = await pool.query(
       "SELECT id, title, content, created_at, updated_at FROM hlsxcs_test.test_records WHERE id = ?",
       [id],
     );
@@ -224,7 +224,7 @@ app.delete("/api/records/:id", async (c) => {
   try {
     pool = await getConnection(c.env);
     await ensureSchema(pool);
-    const [result] = await pool.execute("DELETE FROM hlsxcs_test.test_records WHERE id = ?", [id]);
+    const [result] = await pool.query("DELETE FROM hlsxcs_test.test_records WHERE id = ?", [id]);
     if ((result as { affectedRows: number }).affectedRows === 0) {
       return c.json({ ok: false, message: "记录不存在" }, 404);
     }
