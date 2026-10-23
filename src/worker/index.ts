@@ -3,7 +3,11 @@ import mysql from "mysql2/promise";
 
 interface Env {
   HYPERDRIVE: {
-    connectionString: string;
+    host: string;
+    user: string;
+    password: string;
+    database: string;
+    port: number;
   };
   CRUD_API_TOKEN?: string;
 }
@@ -19,10 +23,35 @@ type RecordRow = {
 const app = new Hono<{ Bindings: Env }>();
 
 function getPool(env: Env) {
-  if (!env.HYPERDRIVE?.connectionString) {
-    throw new Error("Hyperdrive binding HYPERDRIVE is not configured.");
+  const db = env.HYPERDRIVE;
+  if (!db?.host || !db.user || !db.password || !db.database || !db.port) {
+    throw new Error("Hyperdrive binding HYPERDRIVE is missing host/user/password/database/port.");
   }
-  return mysql.createPool(env.HYPERDRIVE.connectionString);
+  return mysql.createPool({
+    host: db.host,
+    user: db.user,
+    password: db.password,
+    database: db.database,
+    port: Number(db.port),
+    disableEval: true,
+    waitForConnections: true,
+    connectionLimit: 5,
+    maxIdle: 2,
+    idleTimeout: 60000,
+  });
+}
+
+async function ensureSchema(pool: ReturnType<typeof getPool>) {
+  await pool.query("CREATE DATABASE IF NOT EXISTS hlsxcs_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+  await pool.query(`CREATE TABLE IF NOT EXISTS hlsxcs_test.test_records (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    title VARCHAR(200) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_test_records_created_at (created_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
 }
 
 app.use("/api/*", async (c, next) => {
@@ -51,6 +80,7 @@ app.get("/api/health", async (c) => {
   let pool: ReturnType<typeof getPool> | undefined;
   try {
     pool = getPool(c.env);
+    await ensureSchema(pool);
     await pool.query("SELECT 1 AS ok");
     return c.json({ ok: true, message: "MySQL 连接成功" });
   } catch (error) {
@@ -67,15 +97,16 @@ app.get("/api/records", async (c) => {
   let pool: ReturnType<typeof getPool> | undefined;
   try {
     pool = getPool(c.env);
+    await ensureSchema(pool);
     const q = (c.req.query("q") ?? "").trim().slice(0, 100);
     const limit = Math.min(Math.max(Number(c.req.query("limit") ?? 100) || 100, 1), 200);
     const [rows] = q
       ? await pool.execute(
-          "SELECT id, title, content, created_at, updated_at FROM test_records WHERE title LIKE ? OR content LIKE ? ORDER BY id DESC LIMIT ?",
+          "SELECT id, title, content, created_at, updated_at FROM hlsxcs_test.test_records WHERE title LIKE ? OR content LIKE ? ORDER BY id DESC LIMIT ?",
           [`%${q}%`, `%${q}%`, limit],
         )
       : await pool.execute(
-          "SELECT id, title, content, created_at, updated_at FROM test_records ORDER BY id DESC LIMIT ?",
+          "SELECT id, title, content, created_at, updated_at FROM hlsxcs_test.test_records ORDER BY id DESC LIMIT ?",
           [limit],
         );
     return c.json({ ok: true, records: rows as RecordRow[] });
@@ -96,8 +127,9 @@ app.get("/api/records/:id", async (c) => {
   let pool: ReturnType<typeof getPool> | undefined;
   try {
     pool = getPool(c.env);
+    await ensureSchema(pool);
     const [rows] = await pool.execute(
-      "SELECT id, title, content, created_at, updated_at FROM test_records WHERE id = ? LIMIT 1",
+      "SELECT id, title, content, created_at, updated_at FROM hlsxcs_test.test_records WHERE id = ? LIMIT 1",
       [id],
     );
     const record = (rows as RecordRow[])[0];
@@ -126,13 +158,14 @@ app.post("/api/records", async (c) => {
   let pool: ReturnType<typeof getPool> | undefined;
   try {
     pool = getPool(c.env);
+    await ensureSchema(pool);
     const [result] = await pool.execute(
-      "INSERT INTO test_records (title, content) VALUES (?, ?)",
+      "INSERT INTO hlsxcs_test.test_records (title, content) VALUES (?, ?)",
       [title, content],
     );
     const insertId = (result as { insertId: number }).insertId;
     const [rows] = await pool.execute(
-      "SELECT id, title, content, created_at, updated_at FROM test_records WHERE id = ?",
+      "SELECT id, title, content, created_at, updated_at FROM hlsxcs_test.test_records WHERE id = ?",
       [insertId],
     );
     return c.json({ ok: true, record: (rows as RecordRow[])[0] }, 201);
@@ -161,16 +194,17 @@ app.put("/api/records/:id", async (c) => {
   let pool: ReturnType<typeof getPool> | undefined;
   try {
     pool = getPool(c.env);
+    await ensureSchema(pool);
     const [result] = await pool.execute(
-      "UPDATE test_records SET title = ?, content = ? WHERE id = ?",
+      "UPDATE hlsxcs_test.test_records SET title = ?, content = ? WHERE id = ?",
       [title, content, id],
     );
     if ((result as { affectedRows: number }).affectedRows === 0) {
-      const [rows] = await pool.execute("SELECT id FROM test_records WHERE id = ?", [id]);
+      const [rows] = await pool.execute("SELECT id FROM hlsxcs_test.test_records WHERE id = ?", [id]);
       if ((rows as unknown[]).length === 0) return c.json({ ok: false, message: "记录不存在" }, 404);
     }
     const [rows] = await pool.execute(
-      "SELECT id, title, content, created_at, updated_at FROM test_records WHERE id = ?",
+      "SELECT id, title, content, created_at, updated_at FROM hlsxcs_test.test_records WHERE id = ?",
       [id],
     );
     return c.json({ ok: true, record: (rows as RecordRow[])[0] });
@@ -187,7 +221,8 @@ app.delete("/api/records/:id", async (c) => {
   let pool: ReturnType<typeof getPool> | undefined;
   try {
     pool = getPool(c.env);
-    const [result] = await pool.execute("DELETE FROM test_records WHERE id = ?", [id]);
+    await ensureSchema(pool);
+    const [result] = await pool.execute("DELETE FROM hlsxcs_test.test_records WHERE id = ?", [id]);
     if ((result as { affectedRows: number }).affectedRows === 0) {
       return c.json({ ok: false, message: "记录不存在" }, 404);
     }
