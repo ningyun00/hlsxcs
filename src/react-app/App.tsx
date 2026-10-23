@@ -40,7 +40,8 @@ async function request(path: string, init?: RequestInit, token = ""): Promise<Ap
 }
 
 function App() {
-  const [records, setRecords] = useState<RecordItem[]>([]);\n  const [token, setToken] = useState(() => window.sessionStorage.getItem("hlsxcs-crud-token") ?? "");
+  const [records, setRecords] = useState<RecordItem[]>([]);
+  const [token, setToken] = useState(() => window.sessionStorage.getItem("hlsxcs-crud-token") ?? "");
   const [search, setSearch] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -59,7 +60,7 @@ function App() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "读取数据失败");
     }
-  }, [search]);
+  }, [search, token]);
 
   const checkDb = useCallback(async () => {
     try {
@@ -134,7 +135,8 @@ function App() {
       <section className="layout">
         <div className="panel">
           <div className="panel-head"><h2>{editingId === null ? "新增测试记录" : `编辑记录 #${editingId}`}</h2><p>填写标题与内容，提交后将直接写入 MySQL。</p></div>
-          <form className="panel-body" onSubmit={save}>\n            <div className="group"><label htmlFor="api-token">API 访问令牌</label><input id="api-token" className="field" type="password" autoComplete="off" value={token} onChange={e=>{setToken(e.target.value);window.sessionStorage.setItem("hlsxcs-crud-token",e.target.value);}} placeholder="填写 Cloudflare CRUD_API_TOKEN" /><div className="sub" style={{marginTop:7}}>令牌只保存在当前浏览器会话中；刷新页面仍可使用，关闭标签页后清除。</div></div>
+          <form className="panel-body" onSubmit={save}>
+            <div className="group"><label htmlFor="api-token">API 访问令牌</label><input id="api-token" className="field" type="password" autoComplete="off" value={token} onChange={e=>{setToken(e.target.value);window.sessionStorage.setItem("hlsxcs-crud-token",e.target.value);}} placeholder="填写 Cloudflare CRUD_API_TOKEN" /><div className="sub" style={{marginTop:7}}>令牌只保存在当前浏览器会话中；刷新页面仍可使用，关闭标签页后清除。</div></div>
             <div className="group"><label htmlFor="title">标题 <span style={{color:"#dc2626"}}>*</span></label><input id="title" className="field" value={title} onChange={e=>setTitle(e.target.value)} maxLength={200} placeholder="例如：测试第一条记录" required /></div>
             <div className="group"><label htmlFor="content">内容</label><textarea id="content" className="field" value={content} onChange={e=>setContent(e.target.value)} maxLength={20000} placeholder="输入测试数据、备注或 JSON 文本…" /></div>
             <div className="actions"><button className="btn primary" type="submit" disabled={busy}>{busy ? "处理中…" : editingId === null ? "＋ 新增记录" : "保存修改"}</button>{editingId !== null && <button className="btn secondary" type="button" onClick={resetForm}>取消编辑</button>}<button className="btn secondary" type="button" onClick={()=>{void checkDb();void load(search)}} disabled={busy}>刷新数据</button></div>
