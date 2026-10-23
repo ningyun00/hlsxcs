@@ -73,7 +73,7 @@ app.use("/api/records/*", async (c, next) => {
 });
 
 app.get("/api/health", async (c) => {
-  let pool: ReturnType<typeof getPool> | undefined;
+  let pool: Awaited<ReturnType<typeof getConnection>> | undefined;
   try {
     pool = await getConnection(c.env);
     await ensureSchema(pool);
@@ -90,9 +90,9 @@ app.get("/api/health", async (c) => {
 });
 
 app.get("/api/records", async (c) => {
-  let pool: ReturnType<typeof getPool> | undefined;
+  let pool: Awaited<ReturnType<typeof getConnection>> | undefined;
   try {
-    pool = getPool(c.env);
+    pool = await getConnection(c.env);
     await ensureSchema(pool);
     const q = (c.req.query("q") ?? "").trim().slice(0, 100);
     const limit = Math.min(Math.max(Number(c.req.query("limit") ?? 100) || 100, 1), 200);
@@ -120,9 +120,9 @@ app.get("/api/records", async (c) => {
 app.get("/api/records/:id", async (c) => {
   const id = Number(c.req.param("id"));
   if (!Number.isSafeInteger(id) || id < 1) return c.json({ ok: false, message: "无效的记录 ID" }, 400);
-  let pool: ReturnType<typeof getPool> | undefined;
+  let pool: Awaited<ReturnType<typeof getConnection>> | undefined;
   try {
-    pool = getPool(c.env);
+    pool = await getConnection(c.env);
     await ensureSchema(pool);
     const [rows] = await pool.execute(
       "SELECT id, title, content, created_at, updated_at FROM hlsxcs_test.test_records WHERE id = ? LIMIT 1",
@@ -151,9 +151,9 @@ app.post("/api/records", async (c) => {
   if (title.length > 200) return c.json({ ok: false, message: "标题不能超过 200 个字符" }, 400);
   if (content.length > 20000) return c.json({ ok: false, message: "内容不能超过 20000 个字符" }, 400);
 
-  let pool: ReturnType<typeof getPool> | undefined;
+  let pool: Awaited<ReturnType<typeof getConnection>> | undefined;
   try {
-    pool = getPool(c.env);
+    pool = await getConnection(c.env);
     await ensureSchema(pool);
     const [result] = await pool.execute(
       "INSERT INTO hlsxcs_test.test_records (title, content) VALUES (?, ?)",
@@ -187,9 +187,9 @@ app.put("/api/records/:id", async (c) => {
   if (title.length > 200) return c.json({ ok: false, message: "标题不能超过 200 个字符" }, 400);
   if (content.length > 20000) return c.json({ ok: false, message: "内容不能超过 20000 个字符" }, 400);
 
-  let pool: ReturnType<typeof getPool> | undefined;
+  let pool: Awaited<ReturnType<typeof getConnection>> | undefined;
   try {
-    pool = getPool(c.env);
+    pool = await getConnection(c.env);
     await ensureSchema(pool);
     const [result] = await pool.execute(
       "UPDATE hlsxcs_test.test_records SET title = ?, content = ? WHERE id = ?",
@@ -214,9 +214,9 @@ app.put("/api/records/:id", async (c) => {
 app.delete("/api/records/:id", async (c) => {
   const id = Number(c.req.param("id"));
   if (!Number.isSafeInteger(id) || id < 1) return c.json({ ok: false, message: "无效的记录 ID" }, 400);
-  let pool: ReturnType<typeof getPool> | undefined;
+  let pool: Awaited<ReturnType<typeof getConnection>> | undefined;
   try {
-    pool = getPool(c.env);
+    pool = await getConnection(c.env);
     await ensureSchema(pool);
     const [result] = await pool.execute("DELETE FROM hlsxcs_test.test_records WHERE id = ?", [id]);
     if ((result as { affectedRows: number }).affectedRows === 0) {
