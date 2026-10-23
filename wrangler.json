@@ -19,5 +19,11 @@
       "binding": "HYPERDRIVE",
       "id": "642e910107564257aa45423b002a4327"
     }
+  ],
+  "vpc_services": [
+    {
+      "binding": "HLSXCS_VPC_SERVER",
+      "service_id": "01a1679d-48e0-7882-a736-1af18e07c592"
+    }
   ]
 }
