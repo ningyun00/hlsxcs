@@ -22,14 +22,7 @@ function getPool(env: Env) {
   if (!env.HYPERDRIVE?.connectionString) {
     throw new Error("Hyperdrive binding HYPERDRIVE is not configured.");
   }
-  return mysql.createPool({
-    uri: env.HYPERDRIVE.connectionString,
-    waitForConnections: true,
-    connectionLimit: 5,
-    maxIdle: 2,
-    idleTimeout: 60000,
-    enableKeepAlive: true,
-  });
+  return mysql.createPool(env.HYPERDRIVE.connectionString);
 }
 
 app.use("/api/*", async (c, next) => {
@@ -50,13 +43,8 @@ app.get("/api/health", async (c) => {
   let pool: ReturnType<typeof getPool> | undefined;
   try {
     pool = getPool(c.env);
-    const [rows] = await pool.query("SELECT DATABASE() AS database_name, 1 AS ok");
-    const result = (rows as Array<{ database_name: string | null; ok: number }>)[0];
-    return c.json({
-      ok: true,
-      database: result?.database_name ?? null,
-      message: "MySQL 连接成功",
-    });
+    await pool.query("SELECT 1 AS ok");
+    return c.json({ ok: true, message: "MySQL 连接成功" });
   } catch (error) {
     return c.json({
       ok: false,
