@@ -35,5 +35,10 @@ jobs:
           fi
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
-      - name: Build application
+      - name: Build and verify application
         run: npm run check
+      - name: Deploy to Cloudflare Workers
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 7b6f00d3375c63806a6a67dacfb761e7
