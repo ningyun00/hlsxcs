@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
 type RecordItem = {
   id: number;
@@ -49,7 +49,7 @@ function App() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [dbStatus, setDbStatus] = useState<"checking" | "ok" | "bad">("checking");
-  const [database, setDatabase] = useState<string | null>(null);
+
 
   const load = useCallback(async (query = search) => {
     try {
@@ -65,10 +65,10 @@ function App() {
     try {
       const data = await request("/api/health");
       setDbStatus("ok");
-      setDatabase(data.database ?? null);
+
     } catch {
       setDbStatus("bad");
-      setDatabase(null);
+
     }
   }, []);
 
@@ -83,7 +83,7 @@ function App() {
   }, [search, load]);
 
   const resetForm = () => { setTitle(""); setContent(""); setEditingId(null); };
-  const save = async (event: React.FormEvent<HTMLFormElement>) => {
+  const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setBusy(true); setError(""); setMessage("");
     try {
@@ -118,7 +118,7 @@ function App() {
   };
 
   const latestTime = useMemo(() => records[0]?.updated_at ? new Date(records[0].updated_at).toLocaleString() : "暂无记录", [records]);
-  const dbLabel = dbStatus === "checking" ? "正在检查数据库" : dbStatus === "ok" ? `MySQL 已连接${database ? ` · ${database}` : ""}` : "数据库连接失败";
+  const dbLabel = dbStatus === "checking" ? "正在检查数据库" : dbStatus === "ok" ? "MySQL 已连接" : "数据库连接失败";
   return <>
     <style>{styles}</style>
     <main className="shell">
