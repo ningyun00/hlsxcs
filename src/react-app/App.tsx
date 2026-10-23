@@ -64,7 +64,7 @@ function App() {
 
   const checkDb = useCallback(async () => {
     try {
-      const data = await request("/api/health");
+      await request("/api/health");
       setDbStatus("ok");
 
     } catch {
